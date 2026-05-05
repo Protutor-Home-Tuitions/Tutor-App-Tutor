@@ -6,17 +6,29 @@ export default function HomeScreen({ onLogout, onAttSuccess }) {
   const [selId,      setSelId]      = useState(null)
   const [activeMonth, setActiveMonth] = useState('all')
   const [attOpen,    setAttOpen]    = useState(false)
-  const [confirmMonthKey, setConfirmMonthKey] = useState(null) // month being confirmed for submission
+  const [confirmMonthKey, setConfirmMonthKey] = useState(null)
   const [toastMsg,   setToastMsg]   = useState('')
 
-  const me          = useTutorStore((s) => s.me)
-  const tuitions    = useTutorStore((s) => s.tuitions)
-  const getAttFor   = useTutorStore((s) => s.getAttFor)
+  const me            = useTutorStore((s) => s.me)
+  const tuitions      = useTutorStore((s) => s.tuitions)
+  const getAttFor     = useTutorStore((s) => s.getAttFor)
   const getCompletion = useTutorStore((s) => s.getCompletion)
   const completeMonth = useTutorStore((s) => s.completeMonth)
-  const logout      = useTutorStore((s) => s.logout)
+  const refresh       = useTutorStore((s) => s.refresh)
+  const logout        = useTutorStore((s) => s.logout)
 
   const motive = getRandomMotive()
+
+  // Refresh from DB when tab becomes visible again (handles deactivation, new data)
+  useEffect(() => {
+    function handleVisibility() {
+      if (document.visibilityState === 'visible') {
+        refresh()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [])
 
   // Sorted tuitions — active first (by recent startDate), inactive after
   const myTuitions = [...tuitions].sort((a, b) => {

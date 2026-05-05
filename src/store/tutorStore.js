@@ -3,15 +3,38 @@ import { api } from '../lib/api'
 
 const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
+// ── Session persistence using localStorage with 15-day expiry ──
+const SESSION_KEY   = 'protutor_tutor_session'
+const SESSION_DAYS  = 15
+
+function saveSession(token, phone) {
+  const expiry = Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ token, phone, expiry }))
+}
+
+function loadSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY)
+    if (!raw) return null
+    const { token, phone, expiry } = JSON.parse(raw)
+    if (Date.now() > expiry) { localStorage.removeItem(SESSION_KEY); return null }
+    return { token, phone }
+  } catch { return null }
+}
+
+function clearSession() {
+  localStorage.removeItem(SESSION_KEY)
+}
+
 export const useTutorStore = create((set, get) => ({
   // ── Auth ──
-  me: null,       // { id, name, phone, active, passDigits, ... }
+  me: null,
   token: null,
 
   // ── Data ──
-  tuitions: [],   // my assigned tuitions
-  attendance: {}, // { [enqId]: [...records] }
-  completions: {}, // { "enqId_monthKey": { completedAt, completedBy, tutorPhone } }
+  tuitions: [],
+  attendance: {},   // { [enqId]: [...records] }
+  completions: {},  // { "enqId_monthKey": { ... } }
 
   loading: false,
   error: null,
@@ -21,8 +44,7 @@ export const useTutorStore = create((set, get) => ({
     set({ loading: true, error: null })
     try {
       const { token, tutor } = await api.tutorLogin(phone, password)
-      sessionStorage.setItem('protutor_tutor_token', token)
-      sessionStorage.setItem('protutor_tutor_phone', phone)
+      saveSession(token, phone)
       set({ me: tutor, token, loading: false })
       await get().bootstrap()
       return tutor
@@ -32,30 +54,28 @@ export const useTutorStore = create((set, get) => ({
     }
   },
 
-  // ── Restore session ──
+  // ── Restore session (persists across page close/refresh for 15 days) ──
   restoreSession: async () => {
-    const token = sessionStorage.getItem('protutor_tutor_token')
-    const phone = sessionStorage.getItem('protutor_tutor_phone')
-    if (!token || !phone) return false
-    set({ token })
+    const session = loadSession()
+    if (!session) return false
+    set({ token: session.token })
     try {
       await get().bootstrap()
       return true
     } catch {
-      sessionStorage.removeItem('protutor_tutor_token')
-      sessionStorage.removeItem('protutor_tutor_phone')
+      clearSession()
+      set({ token: null })
       return false
     }
   },
 
-  // ── Bootstrap — load all tuitions + attendance ──
+  // ── Bootstrap — always fetch fresh from DB ──
   bootstrap: async () => {
     set({ loading: true })
     try {
       const tuitions = await api.getMyTuitions()
       set({ tuitions, loading: false })
-
-      // Load attendance for all tuitions in parallel
+      // Always load fresh attendance from DB (not cache)
       await Promise.all(tuitions.map((t) => get().loadTuitionData(t.enqId)))
     } catch (err) {
       set({ error: err.message, loading: false })
@@ -63,61 +83,62 @@ export const useTutorStore = create((set, get) => ({
     }
   },
 
-  // ── Load attendance + completions for one tuition ──
+  // ── Load attendance + completions for one tuition — always from DB ──
   loadTuitionData: async (enqId) => {
     try {
       const [attRows, completionRows] = await Promise.all([
         api.getAttendance(enqId),
         api.getAttCompletions(enqId).catch(() => []),
       ])
-
       const compMap = {}
       completionRows.forEach((c) => {
         compMap[`${c.enqId}_${c.monthKey}`] = c
       })
-
       set((s) => ({
         attendance: { ...s.attendance, [enqId]: attRows },
         completions: { ...s.completions, ...compMap },
       }))
-    } catch (err) {
-      console.error('loadTuitionData error:', err)
+    } catch {
+      // Silently fail — don't log sensitive data
     }
   },
 
-  // ── Submit attendance ──
+  // ── Submit attendance — verify no duplicate in DB before saving ──
   addAttendance: async (enqId, record) => {
+    // Refresh attendance from DB first to get latest state
+    await get().loadTuitionData(enqId)
+
+    // Check for duplicate in the freshly loaded data
+    const current = get().attendance[enqId] || []
+    if (current.find((a) => a.date === record.date)) {
+      throw new Error(`Attendance already marked for ${record.date}. Only one entry per day is allowed.`)
+    }
+
     const row = await api.submitAttendance({ ...record, enqId })
-    set((s) => ({
-      attendance: {
-        ...s.attendance,
-        [enqId]: [row, ...(s.attendance[enqId] || [])],
-      },
-    }))
+
+    // Refresh from DB after save to ensure consistency
+    await get().loadTuitionData(enqId)
+
     return row
   },
 
   // ── Submit month completion ──
   completeMonth: async (enqId, monthKey) => {
     await api.submitMonthCompletion(enqId, monthKey)
-    const key = `${enqId}_${monthKey}`
-    set((s) => ({
-      completions: {
-        ...s.completions,
-        [key]: {
-          completedAt: new Date().toISOString(),
-          completedBy: s.me?.name || 'Tutor',
-          tutorPhone: s.me?.phone || '',
-          enqId, monthKey,
-        },
-      },
-    }))
+    // Refresh from DB to get accurate state
+    await get().loadTuitionData(enqId)
+  },
+
+  // ── Full refresh — pull everything fresh from DB ──
+  refresh: async () => {
+    const { tuitions } = get()
+    if (!tuitions.length) return
+    await Promise.all(tuitions.map((t) => get().loadTuitionData(t.enqId)))
   },
 
   // ── Logout ──
   logout: () => {
-    sessionStorage.removeItem('protutor_tutor_token')
-    sessionStorage.removeItem('protutor_tutor_phone')
+    clearSession()
     set({ me: null, token: null, tuitions: [], attendance: {}, completions: {} })
   },
 
@@ -145,8 +166,7 @@ export function isMonthCompletionEnabled(monthKey) {
   if (!monthKey) return false
   const [y, m] = monthKey.split('-').map(Number)
   const now = new Date()
-  const monthPassed = (now.getFullYear() > y) ||
-    (now.getFullYear() === y && now.getMonth() > m - 1)
+  const monthPassed = (now.getFullYear() > y) || (now.getFullYear() === y && now.getMonth() > m - 1)
   if (monthPassed) return true
   const lastDay = new Date(y, m, 0)
   const isLastDay = now.getFullYear() === lastDay.getFullYear() &&
@@ -170,7 +190,7 @@ export function dateOpts() {
   return opts
 }
 
-const ABGS = ['#FEF3C7','#DBEAFE','#FCE7F3','#D1FAE5','#EDE9FE','#FEE2E2']
+const ABGS  = ['#FEF3C7','#DBEAFE','#FCE7F3','#D1FAE5','#EDE9FE','#FEE2E2']
 const ATXTS = ['#92400E','#1E40AF','#9D174D','#065F46','#5B21B6','#B91C1C']
 export function getAvatarColors(index) {
   return { bg: ABGS[index % 6], text: ATXTS[index % 6] }
