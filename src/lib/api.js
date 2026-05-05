@@ -1,7 +1,13 @@
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
 function getToken() {
-  return sessionStorage.getItem('protutor_tutor_token')
+  try {
+    const raw = localStorage.getItem('protutor_tutor_session')
+    if (!raw) return null
+    const { token, expiry } = JSON.parse(raw)
+    if (Date.now() > expiry) return null
+    return token
+  } catch { return null }
 }
 
 async function request(method, path, body) {
