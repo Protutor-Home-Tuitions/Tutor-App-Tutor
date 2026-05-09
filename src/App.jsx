@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Analytics } from '@vercel/analytics/react'
 import { useTutorStore } from './store/tutorStore'
 import LoginScreen from './features/auth/LoginScreen'
 import HomeScreen from './features/home/HomeScreen'
@@ -21,7 +22,22 @@ export default function App() {
   function goOk(data) { setOkData(data); setScreen('ok') }
   function goLogin() { setScreen('login') }
 
-  if (screen === 'login') return <LoginScreen onSuccess={goHome} />
-  if (screen === 'ok')    return <OkScreen data={okData} onBack={goHome} />
-  return <HomeScreen onLogout={goLogin} onAttSuccess={goOk} />
+  if (screen === 'login') return (
+    <>
+      <LoginScreen onSuccess={goHome} />
+      <Analytics />
+    </>
+  )
+  if (screen === 'ok')    return (
+    <>
+      <OkScreen data={okData} onBack={goHome} />
+      <Analytics />
+    </>
+  )
+  return (
+    <>
+      <HomeScreen onLogout={goLogin} onAttSuccess={goOk} />
+      <Analytics />
+    </>
+  )
 }
