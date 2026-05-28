@@ -32,7 +32,9 @@ export default function HomeScreen({ onLogout, onAttSuccess }) {
 
   // Sorted tuitions — active first (by recent startDate), inactive after
   const myTuitions = [...tuitions].sort((a, b) => {
-    if (a.active !== b.active) return a.active ? -1 : 1
+    const aActive = a.active || a.status === 'idle'
+    const bActive = b.active || b.status === 'idle'
+    if (aActive !== bActive) return aActive ? -1 : 1
     return (b.start || '').localeCompare(a.start || '')
   })
 
@@ -110,14 +112,14 @@ export default function HomeScreen({ onLogout, onAttSuccess }) {
             const { bg, text } = getAvatarColors(i)
             return (
               <button key={t.id}
-                className={`stab${selId === t.id ? ' sel' : ''}${!t.active ? ' dimmed' : ''}`}
+                className={`stab${selId === t.id ? ' sel' : ''}${(!t.active && t.status !== 'idle') ? ' dimmed' : ''}`}
                 onClick={() => { setSelId(t.id); setActiveMonth('all') }}
               >
                 <span style={{ width: 22, height: 22, borderRadius: '50%', background: bg, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: text }}>
                   {t.studentName?.[0] || '?'}
                 </span>
                 {t.studentName?.split(' ')[0]}
-                {!t.active && <span style={{ fontSize: 10, opacity: 0.55 }}>✕</span>}
+                {(!t.active && t.status !== 'idle') && <span style={{ fontSize: 10, opacity: 0.55 }}>✕</span>}
               </button>
             )
           })}
@@ -203,8 +205,11 @@ function StudentDetail({ tuition: t, activeMonth, setActiveMonth, onMarkAtt, con
   const monthLabel = MN_ARR[parseInt(cm) - 1] + ' ' + String(cy).slice(2)
   const lastDay = new Date(parseInt(cy), parseInt(cm), 0)
 
-  const statusBadge = t.active
+  const tuitionStatus = t.status || (t.active ? 'active' : 'inactive')
+  const statusBadge = tuitionStatus === 'active'
     ? <span style={{ fontSize: 11, background: '#DCFCE7', color: '#166534', padding: '4px 10px', borderRadius: 10, fontWeight: 600, flexShrink: 0 }}>Active</span>
+    : tuitionStatus === 'idle'
+    ? <span style={{ fontSize: 11, background: '#FEF3C7', color: '#92400E', padding: '4px 10px', borderRadius: 10, fontWeight: 600, flexShrink: 0 }}>⏸ Idle</span>
     : <span style={{ fontSize: 11, background: '#FEE2E2', color: '#B91C1C', padding: '4px 10px', borderRadius: 10, fontWeight: 600, flexShrink: 0 }}>Inactive</span>
 
   return (
@@ -263,7 +268,7 @@ function StudentDetail({ tuition: t, activeMonth, setActiveMonth, onMarkAtt, con
         </div>
 
         {/* Mark attendance button */}
-        {t.active ? (
+        {(t.active || t.status === 'idle') ? (
           curSubmitted ? (
             <div style={{ background: '#FEF9C3', border: '1.5px solid #FDE68A', borderRadius: 12, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#CA8A04" strokeWidth="2.2" strokeLinecap="round">
