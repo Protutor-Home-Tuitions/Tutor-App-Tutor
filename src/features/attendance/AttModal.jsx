@@ -211,7 +211,7 @@ export default function AttModal({ tuition: t, onClose, onSuccess }) {
           )}
 
           <button className="btn" onClick={submitAtt} disabled={saving} style={{ opacity: saving ? 0.7 : 1 }}>
-            {saving ? 'Submitting…' : 'Submit attendance →'}
+            {saving ? 'Marking…' : 'Mark attendance →'}
           </button>
           <div style={{ height: 8 }} />
         </div>
