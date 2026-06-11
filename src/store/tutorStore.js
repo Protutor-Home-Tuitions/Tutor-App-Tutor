@@ -206,3 +206,106 @@ const MOTIVES = [
 export function getRandomMotive() {
   return MOTIVES[Math.floor(Math.random() * MOTIVES.length)]
 }
+
+// ─────────────────────────────────────────────────────────────
+// FEE CALCULATION — exact copy from admin helpers.js
+// Used to show per-class earning and monthly total to tutor
+// ─────────────────────────────────────────────────────────────
+
+export function countScheduledDaysInMonth(year, month, scheduledDays) {
+  if (!scheduledDays?.length) return 0
+  const DOW_MAP = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 }
+  const targetDows = scheduledDays.map((d) => DOW_MAP[d]).filter((d) => d !== undefined)
+  if (!targetDows.length) return 0
+  const daysInMonth = new Date(year, month, 0).getDate()
+  let count = 0
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dow = new Date(year, month - 1, d).getDay()
+    if (targetDows.includes(dow)) count++
+  }
+  return count
+}
+
+export function getWorkingHours(tuition, monthKey, forceFixed = false) {
+  const dur         = parseFloat(tuition?.duration || 0)
+  const daysArr     = tuition?.days || []
+  const daysPerWeek = daysArr.length
+  if (!dur || !daysPerWeek) return 0
+
+  const useFixed = forceFixed || tuition?.calcMode === 'fixed'
+
+  if (useFixed) {
+    return parseFloat((daysPerWeek * dur * 4).toFixed(4))
+  }
+
+  if (!monthKey) return 0
+  const [y, m] = monthKey.split('-').map(Number)
+  const scheduledDays = countScheduledDaysInMonth(y, m, daysArr)
+  return parseFloat((scheduledDays * dur).toFixed(4))
+}
+
+export function calcEffHourly(fee, feeType, tuition, monthKey, forceFixed = false) {
+  if (!fee || !feeType) return null
+  const f = parseFloat(fee)
+  if (!f) return null
+
+  if (feeType === 'Hourly') {
+    return parseFloat(f.toFixed(2))
+  }
+
+  if (feeType === 'Session') {
+    const dur = parseFloat(tuition?.duration || 0)
+    if (!dur) return null
+    return parseFloat((f / dur).toFixed(2))
+  }
+
+  if (feeType === 'Monthly') {
+    const workingHrs = getWorkingHours(tuition, monthKey, forceFixed)
+    if (!workingHrs) return null
+    return parseFloat((f / workingHrs).toFixed(2))
+  }
+
+  return null
+}
+
+export function calcTutorAmount(tuition, monthKey, nonDemoAtt) {
+  if (!tuition || !monthKey || !nonDemoAtt?.length) return null
+
+  const feeType = tuition.tutorFeeType || tuition.feeType
+  const fee     = parseFloat(tuition.feeTutor || 0)
+  if (!fee || !feeType) return null
+
+  const actualHours = nonDemoAtt.reduce((s, a) => s + parseFloat(a.dur || 0), 0)
+  if (!actualHours) return 0
+
+  const parentType  = tuition.parentFeeType || tuition.feeType
+  const bothMonthly = parentType === 'Monthly' && feeType === 'Monthly'
+  const forceFixed  = feeType === 'Monthly' && !bothMonthly
+  const effHourly   = calcEffHourly(fee, feeType, tuition, monthKey, forceFixed)
+  if (effHourly === null) return null
+
+  return Math.round(effHourly * actualHours)
+}
+
+export function calcPerClassEarning(tuition, attRecord) {
+  if (!tuition || !attRecord) return null
+
+  const feeType = tuition.tutorFeeType || tuition.feeType
+  const fee     = parseFloat(tuition.feeTutor || 0)
+  if (!fee || !feeType) return null
+
+  const dur = parseFloat(attRecord.dur || 0)
+  if (!dur) return null
+
+  const parentType  = tuition.parentFeeType || tuition.feeType
+  const bothMonthly = parentType === 'Monthly' && feeType === 'Monthly'
+  const forceFixed  = feeType === 'Monthly' && !bothMonthly
+
+  // For per-class we don't have a specific monthKey from the record
+  // Use the attRecord's monthKey if available
+  const monthKey = attRecord.monthKey || null
+  const effHourly = calcEffHourly(fee, feeType, tuition, monthKey, forceFixed)
+  if (effHourly === null) return null
+
+  return Math.round(effHourly * dur)
+}

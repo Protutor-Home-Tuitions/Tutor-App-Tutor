@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useTutorStore, fd, MN_ARR, currentMonthKey, isMonthCompletionEnabled, getAvatarColors, getRandomMotive } from '../../store/tutorStore'
+import { useTutorStore, fd, MN_ARR, currentMonthKey, isMonthCompletionEnabled, getAvatarColors, getRandomMotive, calcTutorAmount } from '../../store/tutorStore'
 import AttModal from '../attendance/AttModal'
 
 export default function HomeScreen({ onLogout, onAttSuccess }) {
@@ -254,7 +254,7 @@ function StudentDetail({ tuition: t, activeMonth, setActiveMonth, onMarkAtt, con
         {/* Fee */}
         <div className="icell" style={{ background: '#FDF4FF', marginBottom: 10 }}>
           <p style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 3 }}>Fee</p>
-          <p style={{ fontSize: 14, fontWeight: 600, color: '#9333EA' }}>₹{t.feeTutor} / {t.feeType}</p>
+          <p style={{ fontSize: 14, fontWeight: 600, color: '#9333EA' }}>₹{t.feeTutor} / {t.tutorFeeType || t.feeType}</p>
         </div>
 
         {/* Subjects */}
@@ -349,13 +349,26 @@ function StudentDetail({ tuition: t, activeMonth, setActiveMonth, onMarkAtt, con
       <div className="card" style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 13 }}>
           <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Attendance history</p>
-          <span style={{
-            fontSize: 13, padding: '4px 11px', borderRadius: 9, fontWeight: 600,
-            background: activeMonth === 'all' ? '#F1F5F9' : '#1A56DB',
-            color: activeMonth === 'all' ? '#64748B' : 'white',
-          }}>
-            {fil.length} classes
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* Monthly earning box — only when specific month selected */}
+            {activeMonth !== 'all' && (() => {
+              const monthAtt = fil.filter(a => !a.isDemo)
+              const earning  = calcTutorAmount(t, activeMonth, monthAtt)
+              return earning !== null ? (
+                <div style={{ border: '1.5px solid #D1FAE5', borderRadius: 8, padding: '4px 10px', textAlign: 'center', background: '#F0FDF4' }}>
+                  <p style={{ fontSize: 10, color: '#15803D', margin: 0, fontWeight: 600 }}>Earnings</p>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: '#15803D', margin: 0 }}>₹{earning.toLocaleString('en-IN')}</p>
+                </div>
+              ) : null
+            })()}
+            <span style={{
+              fontSize: 13, padding: '4px 11px', borderRadius: 9, fontWeight: 600,
+              background: activeMonth === 'all' ? '#F1F5F9' : '#1A56DB',
+              color: activeMonth === 'all' ? '#64748B' : 'white',
+            }}>
+              {fil.length} classes
+            </span>
+          </div>
         </div>
 
         {/* Month pills */}
