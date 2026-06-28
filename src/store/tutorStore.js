@@ -5,20 +5,20 @@ const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','D
 
 // ── Session persistence using localStorage with 15-day expiry ──
 const SESSION_KEY   = 'protutor_tutor_session'
-const SESSION_DAYS  = 15
+const SESSION_DAYS  = 90
 
-function saveSession(token, phone) {
+function saveSession(token, phone, me) {
   const expiry = Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000
-  localStorage.setItem(SESSION_KEY, JSON.stringify({ token, phone, expiry }))
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ token, phone, expiry, me }))
 }
 
 function loadSession() {
   try {
     const raw = localStorage.getItem(SESSION_KEY)
     if (!raw) return null
-    const { token, phone, expiry } = JSON.parse(raw)
+    const { token, phone, expiry, me } = JSON.parse(raw)
     if (Date.now() > expiry) { localStorage.removeItem(SESSION_KEY); return null }
-    return { token, phone }
+    return { token, phone, me }
   } catch { return null }
 }
 
@@ -44,7 +44,7 @@ export const useTutorStore = create((set, get) => ({
     set({ loading: true, error: null })
     try {
       const { token, tutor } = await api.tutorLogin(phone, password)
-      saveSession(token, phone)
+      saveSession(token, phone, tutor)
       set({ me: tutor, token, loading: false })
       await get().bootstrap()
       return tutor
@@ -58,14 +58,20 @@ export const useTutorStore = create((set, get) => ({
   restoreSession: async () => {
     const session = loadSession()
     if (!session) return false
-    set({ token: session.token })
+    set({ token: session.token, me: session.me || null })
     try {
       await get().bootstrap()
       return true
-    } catch {
-      clearSession()
-      set({ token: null })
-      return false
+    } catch (err) {
+      // Auth error (token invalid/expired on server) — clear session, force re-login
+      const msg = (err?.message || '').toLowerCase()
+      if (msg.includes('401') || msg.includes('403') || msg.includes('unauthorized') || msg.includes('denied')) {
+        clearSession()
+        set({ token: null, me: null })
+        return false
+      }
+      // Network/server error — keep session, show cached data
+      return true
     }
   },
 
