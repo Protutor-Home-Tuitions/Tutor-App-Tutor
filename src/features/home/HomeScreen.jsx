@@ -370,13 +370,24 @@ function StudentDetail({ tuition: t, activeMonth, setActiveMonth, onMarkAtt, con
       <div className="card" style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 13 }}>
           <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Attendance history</p>
-          <span style={{
-            fontSize: 13, padding: '4px 11px', borderRadius: 9, fontWeight: 600,
-            background: activeMonth === 'all' ? '#F1F5F9' : '#1A56DB',
-            color: activeMonth === 'all' ? '#64748B' : 'white',
-          }}>
-            {fil.length} classes
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {activeMonth !== 'all' && (() => {
+              const selMonthAtt = fil.filter(a => !a.isDemo)
+              const selEarning = calcTutorAmount(t, activeMonth, selMonthAtt)
+              return selEarning !== null ? (
+                <div style={{ border: '1.5px solid #D1FAE5', borderRadius: 8, padding: '4px 10px', background: '#F0FDF4' }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#15803D', margin: 0 }}>₹{selEarning.toLocaleString('en-IN')}</p>
+                </div>
+              ) : null
+            })()}
+            <span style={{
+              fontSize: 13, padding: '4px 11px', borderRadius: 9, fontWeight: 600,
+              background: activeMonth === 'all' ? '#F1F5F9' : '#1A56DB',
+              color: activeMonth === 'all' ? '#64748B' : 'white',
+            }}>
+              {fil.length} classes
+            </span>
+          </div>
         </div>
 
         {/* Month pills — full month name + full year */}
