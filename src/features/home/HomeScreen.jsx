@@ -4,6 +4,12 @@ import AttModal from '../attendance/AttModal'
 
 const MN_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
+function fdShort(iso) {
+  if (!iso) return '—'
+  const [, m, d] = iso.split('-')
+  return `${parseInt(d)} ${MN_ARR[parseInt(m) - 1]}`
+}
+
 export default function HomeScreen({ onLogout, onAttSuccess }) {
   const [selId,      setSelId]      = useState(null)
   const [activeMonth, setActiveMonth] = useState('all')
@@ -246,12 +252,12 @@ function StudentDetail({ tuition: t, activeMonth, setActiveMonth, onMarkAtt, con
       {/* Info card */}
       <div className="card" style={{ marginBottom: 12 }}>
         {/* Student header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 15 }}>
-          <div style={{ width: 50, height: 50, borderRadius: 15, background: '#1A56DB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, color: 'white', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+          <div style={{ width: 46, height: 46, borderRadius: 14, background: '#1A56DB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 600, color: 'white', flexShrink: 0 }}>
             {t.studentName?.[0]}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.studentName}</p>
+            <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.studentName}</p>
             <p style={{ fontSize: 12, color: 'var(--text3)', margin: '2px 0 0' }}>Parent: {t.parentName || '—'}</p>
             <p style={{ fontSize: 13, color: 'var(--text2)' }}>
               {t.standard} {t.board} · <span style={{ color: '#1A56DB', fontWeight: 600 }}>{t.enqId}</span>
@@ -260,40 +266,40 @@ function StudentDetail({ tuition: t, activeMonth, setActiveMonth, onMarkAtt, con
           {statusBadge}
         </div>
 
-        {/* Info grid */}
-        <div className="info2" style={{ marginBottom: 9 }}>
-          <div className="icell" style={{ background: '#EBF1FF' }}>
-            <p style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 3 }}>Demo class</p>
-            <p style={{ fontSize: 14, fontWeight: 600, color: '#1A56DB' }}>{fd(t.demo)}</p>
+        {/* Row 1: Demo · Start · Fee */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 6 }}>
+          <div style={{ background: '#EBF1FF', borderRadius: 8, padding: '7px 10px' }}>
+            <p style={{ fontSize: 10, color: '#64748B', marginBottom: 2 }}>Demo</p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#1A56DB' }}>{fdShort(t.demo)}</p>
           </div>
-          <div className="icell" style={{ background: '#FFFBEB' }}>
-            <p style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 3 }}>Start date</p>
-            <p style={{ fontSize: 14, fontWeight: 600, color: '#D97706' }}>{fd(t.start)}</p>
+          <div style={{ background: '#FFFBEB', borderRadius: 8, padding: '7px 10px' }}>
+            <p style={{ fontSize: 10, color: '#64748B', marginBottom: 2 }}>Start</p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#D97706' }}>{fdShort(t.start)}</p>
           </div>
-          <div className="icell" style={{ background: '#F0FDF4' }}>
-            <p style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 3 }}>Schedule</p>
-            <p style={{ fontSize: 14, fontWeight: 600, color: '#16A34A' }}>{t.days?.join(', ')}</p>
-          </div>
-          <div className="icell" style={{ background: '#EDE9FE' }}>
-            <p style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 3 }}>Hrs / day</p>
-            <p style={{ fontSize: 14, fontWeight: 600, color: '#7C3AED' }}>{t.duration} hr</p>
+          <div style={{ background: '#FDF4FF', borderRadius: 8, padding: '7px 10px' }}>
+            <p style={{ fontSize: 10, color: '#64748B', marginBottom: 2 }}>Fee</p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#9333EA' }}>₹{t.feeTutor}</p>
+            <p style={{ fontSize: 10, color: '#7C3AED', marginTop: 1 }}>{t.tutorFeeType || t.feeType}</p>
           </div>
         </div>
 
-        {/* Fee — uses tutorFeeType with fallback */}
-        <div className="icell" style={{ background: '#FDF4FF', marginBottom: 10 }}>
-          <p style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 3 }}>Fee</p>
-          <p style={{ fontSize: 14, fontWeight: 600, color: '#9333EA' }}>₹{t.feeTutor} / {t.tutorFeeType || t.feeType}</p>
+        {/* Row 2: Schedule · Duration */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 10 }}>
+          <div style={{ background: '#F0FDF4', borderRadius: 8, padding: '7px 10px' }}>
+            <p style={{ fontSize: 10, color: '#64748B', marginBottom: 2 }}>Schedule</p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#16A34A' }}>{t.days?.join(', ')}</p>
+          </div>
+          <div style={{ background: '#EDE9FE', borderRadius: 8, padding: '7px 10px' }}>
+            <p style={{ fontSize: 10, color: '#64748B', marginBottom: 2 }}>Duration</p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#7C3AED' }}>{t.duration} hr/class</p>
+          </div>
         </div>
 
-        {/* Subjects */}
-        <div style={{ background: '#F7F9FF', borderRadius: 10, padding: '11px 13px', marginBottom: 14, borderLeft: '3px solid #1A56DB' }}>
-          <p style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 6, fontWeight: 600, letterSpacing: '0.3px' }}>SUBJECTS</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-            {t.subjects?.map((s) => (
-              <span key={s} style={{ fontSize: 13, background: '#EBF1FF', color: '#1E40AF', padding: '4px 12px', borderRadius: 9 }}>{s}</span>
-            ))}
-          </div>
+        {/* Subjects — inline pills, no header box */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 12 }}>
+          {t.subjects?.map((s) => (
+            <span key={s} style={{ fontSize: 12, background: '#EBF1FF', color: '#1E40AF', padding: '3px 10px', borderRadius: 8 }}>{s}</span>
+          ))}
         </div>
 
         {/* ── Button 1: Mark Attendance + Button 2: Submit/Earnings ── */}
