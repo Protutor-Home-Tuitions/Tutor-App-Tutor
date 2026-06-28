@@ -296,100 +296,87 @@ function StudentDetail({ tuition: t, activeMonth, setActiveMonth, onMarkAtt, con
           </div>
         </div>
 
-        {/* ── Mark Attendance / Block / Inactive section ── */}
+        {/* ── Button 1: Mark Attendance + Button 2: Submit/Earnings ── */}
         {(t.active || t.status === 'idle') ? (
-          markBlocked ? (
-            isBlockedForFutureMonth ? (
-              // Blocked — must submit old month first
-              <div style={{ background: '#FEF3C7', border: '1.5px solid #FDE68A', borderRadius: 12, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.2" strokeLinecap="round">
-                  <circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>
-                </svg>
-                <div>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: '#92400E' }}>Submit {pendingMonthLabel} attendance first</p>
-                  <p style={{ fontSize: 12, color: '#A16207', marginTop: 2 }}>Submit {pendingMonthLabel} to mark new classes</p>
-                </div>
-              </div>
-            ) : (
-              // Blocked — current month already submitted
-              <div style={{ background: '#FEF9C3', border: '1.5px solid #FDE68A', borderRadius: 12, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#CA8A04" strokeWidth="2.2" strokeLinecap="round">
-                  <path d="M9 11l3 3L22 4"/>
-                </svg>
-                <div>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: '#92400E' }}>{currentMonthName} attendance submitted</p>
-                  <p style={{ fontSize: 12, color: '#A16207', marginTop: 2 }}>No further attendance can be marked for {currentMonthName}</p>
-                </div>
-              </div>
-            )
-          ) : (
-            // Mark attendance enabled
-            <button onClick={onMarkAtt}
-              style={{ width: '100%', padding: 14, background: '#1A56DB', color: 'white', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <>
+            {/* Button 1 — Mark attendance */}
+            <button onClick={markBlocked ? undefined : onMarkAtt}
+              style={{ width: '100%', padding: 14, background: '#1A56DB', color: 'white', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: markBlocked ? 'not-allowed' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: markBlocked ? 0.5 : 1 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round">
                 <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
               </svg>
               Mark attendance
             </button>
-          )
+
+            {/* Button 2 — Submit or Earnings */}
+            <div style={{ marginTop: 10 }}>
+              {pendingMonth ? (
+                <>
+                  <button
+                    onClick={() => setConfirmMonthKey(confirmMonthKey === pendingMonth ? null : pendingMonth)}
+                    style={{ width: '100%', padding: 13, background: '#0369A1', color: 'white', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round">
+                      <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+                    </svg>
+                    Submit Attendance — {pendingMonthLabel}
+                  </button>
+                  {confirmMonthKey === pendingMonth && (
+                    <ConfirmPanel
+                      tuition={t}
+                      monthKey={pendingMonth}
+                      monthLabel={pendingMonthLabel}
+                      allAtt={allAtt}
+                      onCancel={() => setConfirmMonthKey(null)}
+                      onConfirm={() => onConfirmSubmit(t.id, t.enqId, pendingMonth)}
+                    />
+                  )}
+                </>
+              ) : (
+                <div style={{ width: '100%', padding: '12px 16px', background: '#F0FDF4', border: '1.5px solid #D1FAE5', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <p style={{ fontSize: 15, fontWeight: 600, color: '#15803D', margin: 0 }}>
+                    {currentMonthName} earnings — ₹{(currentMonthEarning || 0).toLocaleString('en-IN')}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Messages below Button 2 */}
+            {isBlockedForFutureMonth && (
+              <div style={{ marginTop: 8, padding: '10px 14px', background: '#FEF3C7', border: '1.5px solid #FDE68A', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.2" strokeLinecap="round">
+                  <circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>
+                </svg>
+                <p style={{ fontSize: 12, color: '#92400E', margin: 0 }}>Submit {pendingMonthLabel} attendance first to mark new classes</p>
+              </div>
+            )}
+            {!!currentMonthSubmitted && !isBlockedForFutureMonth && (
+              <div style={{ marginTop: 8, padding: '10px 14px', background: '#DCFCE7', border: '1.5px solid #BBF7D0', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2.2" strokeLinecap="round">
+                  <path d="M20 6L9 17l-5-5"/>
+                </svg>
+                <p style={{ fontSize: 12, color: '#166534', margin: 0 }}>{currentMonthName} attendance submitted — no further changes</p>
+              </div>
+            )}
+          </>
         ) : (
-          // Inactive tuition
           <div style={{ background: '#FEF2F2', borderRadius: 12, padding: '14px 16px', border: '1.5px solid #FECACA', textAlign: 'center' }}>
             <p style={{ fontSize: 14, fontWeight: 700, color: '#B91C1C', marginBottom: 5 }}>🚫 Class Stopped / Over</p>
             <p style={{ fontSize: 13, color: '#DC2626', lineHeight: 1.6 }}>Attendance cannot be marked.<br />Please contact your coordinator.</p>
           </div>
         )}
-
-        {/* ── Submit Attendance section ── */}
-        <div style={{ marginTop: 10 }}>
-          {pendingMonth ? (
-            <>
-              {/* Submit button */}
-              <button
-                onClick={() => setConfirmMonthKey(confirmMonthKey === pendingMonth ? null : pendingMonth)}
-                style={{ width: '100%', padding: 13, background: '#0369A1', color: 'white', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round">
-                  <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
-                </svg>
-                Submit Attendance — {pendingMonthLabel}
-              </button>
-              {/* Confirm panel */}
-              {confirmMonthKey === pendingMonth && (
-                <ConfirmPanel
-                  tuition={t}
-                  monthKey={pendingMonth}
-                  monthLabel={pendingMonthLabel}
-                  allAtt={allAtt}
-                  onCancel={() => setConfirmMonthKey(null)}
-                  onConfirm={() => onConfirmSubmit(t.id, t.enqId, pendingMonth)}
-                />
-              )}
-            </>
-          ) : null}
-        </div>
       </div>
 
       {/* Attendance history card */}
       <div className="card" style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 13 }}>
           <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Attendance history</p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {/* Monthly earning — always current month */}
-            {currentMonthEarning !== null && currentMonthEarning > 0 && (
-              <div style={{ border: '1.5px solid #D1FAE5', borderRadius: 8, padding: '4px 10px', background: '#F0FDF4' }}>
-                <p style={{ fontSize: 13, fontWeight: 600, color: '#15803D', margin: 0 }}>
-                  {currentMonthName} earnings — ₹{currentMonthEarning.toLocaleString('en-IN')}
-                </p>
-              </div>
-            )}
-            <span style={{
-              fontSize: 13, padding: '4px 11px', borderRadius: 9, fontWeight: 600,
-              background: activeMonth === 'all' ? '#F1F5F9' : '#1A56DB',
-              color: activeMonth === 'all' ? '#64748B' : 'white',
-            }}>
-              {fil.length} classes
-            </span>
-          </div>
+          <span style={{
+            fontSize: 13, padding: '4px 11px', borderRadius: 9, fontWeight: 600,
+            background: activeMonth === 'all' ? '#F1F5F9' : '#1A56DB',
+            color: activeMonth === 'all' ? '#64748B' : 'white',
+          }}>
+            {fil.length} classes
+          </span>
         </div>
 
         {/* Month pills — full month name + full year */}
