@@ -7,7 +7,6 @@ import OkScreen from './features/attendance/OkScreen'
 const SPLASH_LINES = [
   'Empowering tutors, shaping futures',
   'Only the best get selected. You\'re one of them.',
-  'Teaching today, transforming tomorrow',
   'Your skill. Their future. Our mission.',
 ]
 
