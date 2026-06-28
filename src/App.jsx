@@ -4,9 +4,17 @@ import LoginScreen from './features/auth/LoginScreen'
 import HomeScreen from './features/home/HomeScreen'
 import OkScreen from './features/attendance/OkScreen'
 
+const SPLASH_LINES = [
+  'Empowering tutors, shaping futures',
+  'Only the best get selected. You\'re one of them.',
+  'Teaching today, transforming tomorrow',
+  'Your skill. Their future. Our mission.',
+]
+
 export default function App() {
   const [screen, setScreen] = useState('loading') // loading | login | home | ok
   const [okData, setOkData] = useState(null)
+  const [splashLine] = useState(() => SPLASH_LINES[Math.floor(Math.random() * SPLASH_LINES.length)])
   const restoreSession = useTutorStore((s) => s.restoreSession)
   const me = useTutorStore((s) => s.me)
 
@@ -31,7 +39,7 @@ export default function App() {
           </svg>
         </div>
         <p style={{ color: 'white', fontSize: 20, fontWeight: 700, margin: '0 0 6px' }}>ProTutor</p>
-        <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, margin: '0 0 20px', fontStyle: 'italic' }}>Empowering tutors, shaping futures</p>
+        <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, margin: '0 0 20px', fontStyle: 'italic' }}>{splashLine}</p>
         <div style={{ display: 'flex', justifyContent: 'center', gap: 6 }}>
           <span className="dot d1" /><span className="dot d2" /><span className="dot d3" />
         </div>
