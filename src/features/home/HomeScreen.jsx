@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useTutorStore, fd, MN_ARR, currentMonthKey, isMonthCompletionEnabled, getAvatarColors, getRandomMotive, calcTutorAmount } from '../../store/tutorStore'
 import AttModal from '../attendance/AttModal'
 
+const MN_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December']
+
 export default function HomeScreen({ onLogout, onAttSuccess }) {
   const [selId,      setSelId]      = useState(null)
   const [activeMonth, setActiveMonth] = useState('all')
@@ -184,26 +186,53 @@ function StudentDetail({ tuition: t, activeMonth, setActiveMonth, onMarkAtt, con
 
   const allAtt = getAttFor(t.enqId).sort((a, b) => b.date.localeCompare(a.date))
   const nowKey = currentMonthKey()
+  const nowDate = new Date()
 
-  // Build month list
+  // ── Pending submission logic ──
+  // Find oldest month that has attendance + not submitted + window open
+  const pendingMonth = (() => {
+    const monthsWithAtt = new Set()
+    allAtt.forEach(a => {
+      if (!a.isDemo) monthsWithAtt.add(a.date.substring(0, 7))
+    })
+    const sorted = [...monthsWithAtt].sort()
+    for (const mk of sorted) {
+      if (!getCompletion(t.enqId, mk) && isMonthCompletionEnabled(mk)) {
+        return mk
+      }
+    }
+    return null
+  })()
+
+  const pendingMonthLabel = pendingMonth
+    ? MN_FULL[parseInt(pendingMonth.split('-')[1]) - 1]
+    : null
+
+  // Current month submitted?
+  const currentMonthSubmitted = getCompletion(t.enqId, nowKey)
+
+  // Block marking if:
+  // 1. Pending month exists AND current month is AFTER it (must submit old first)
+  // 2. Current month is already submitted (can't add to submitted month)
+  const isBlockedForFutureMonth = pendingMonth && nowKey > pendingMonth
+  const markBlocked = isBlockedForFutureMonth || !!currentMonthSubmitted
+
+  // ── Current month earnings ──
+  const currentMonthAtt = allAtt.filter(a => !a.isDemo && a.date.startsWith(nowKey))
+  const currentMonthEarning = calcTutorAmount(t, nowKey, currentMonthAtt)
+  const currentMonthName = MN_FULL[nowDate.getMonth()]
+
+  // ── Build month list ──
   const mm = new Map()
   allAtt.forEach((a) => {
     const [y, mo] = a.date.split('-')
     const k = `${y}-${mo}`
-    if (!mm.has(k)) mm.set(k, MN_ARR[parseInt(mo) - 1] + ' ' + String(y).slice(2))
+    if (!mm.has(k)) mm.set(k, MN_FULL[parseInt(mo) - 1] + ' ' + y)
   })
-  if (!mm.has(nowKey)) mm.set(nowKey, MN_ARR[new Date().getMonth()] + ' ' + String(new Date().getFullYear()).slice(2))
+  if (!mm.has(nowKey)) mm.set(nowKey, MN_FULL[nowDate.getMonth()] + ' ' + nowDate.getFullYear())
   const months = [['all', 'Recent'], ...[...mm.entries()].sort((a, b) => b[0].localeCompare(a[0]))]
 
   const fil = activeMonth === 'all' ? allAtt : allAtt.filter((a) => a.date.startsWith(activeMonth))
-  const checkMonthKey = activeMonth === 'all' ? nowKey : activeMonth
-  const completed = getCompletion(t.enqId, checkMonthKey)
-  const canComplete = isMonthCompletionEnabled(checkMonthKey)
-  const curSubmitted = getCompletion(t.enqId, nowKey)
-
-  const [cy, cm] = checkMonthKey.split('-')
-  const monthLabel = MN_ARR[parseInt(cm) - 1] + ' ' + String(cy).slice(2)
-  const lastDay = new Date(parseInt(cy), parseInt(cm), 0)
 
   const tuitionStatus = t.status || (t.active ? 'active' : 'inactive')
   const statusBadge = tuitionStatus === 'active'
@@ -251,7 +280,7 @@ function StudentDetail({ tuition: t, activeMonth, setActiveMonth, onMarkAtt, con
           </div>
         </div>
 
-        {/* Fee */}
+        {/* Fee — uses tutorFeeType with fallback */}
         <div className="icell" style={{ background: '#FDF4FF', marginBottom: 10 }}>
           <p style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 3 }}>Fee</p>
           <p style={{ fontSize: 14, fontWeight: 600, color: '#9333EA' }}>₹{t.feeTutor} / {t.tutorFeeType || t.feeType}</p>
@@ -267,19 +296,34 @@ function StudentDetail({ tuition: t, activeMonth, setActiveMonth, onMarkAtt, con
           </div>
         </div>
 
-        {/* Mark attendance button */}
+        {/* ── Mark Attendance / Block / Inactive section ── */}
         {(t.active || t.status === 'idle') ? (
-          curSubmitted ? (
-            <div style={{ background: '#FEF9C3', border: '1.5px solid #FDE68A', borderRadius: 12, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#CA8A04" strokeWidth="2.2" strokeLinecap="round">
-                <path d="M9 11l3 3L22 4"/>
-              </svg>
-              <div>
-                <p style={{ fontSize: 14, fontWeight: 600, color: '#92400E' }}>Attendance Submitted</p>
-                <p style={{ fontSize: 12, color: '#A16207', marginTop: 2 }}>This month's attendance has been submitted. No further attendance can be marked.</p>
+          markBlocked ? (
+            isBlockedForFutureMonth ? (
+              // Blocked — must submit old month first
+              <div style={{ background: '#FEF3C7', border: '1.5px solid #FDE68A', borderRadius: 12, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.2" strokeLinecap="round">
+                  <circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>
+                </svg>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: '#92400E' }}>Submit {pendingMonthLabel} attendance first</p>
+                  <p style={{ fontSize: 12, color: '#A16207', marginTop: 2 }}>Submit {pendingMonthLabel} to mark new classes</p>
+                </div>
               </div>
-            </div>
+            ) : (
+              // Blocked — current month already submitted
+              <div style={{ background: '#FEF9C3', border: '1.5px solid #FDE68A', borderRadius: 12, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#CA8A04" strokeWidth="2.2" strokeLinecap="round">
+                  <path d="M9 11l3 3L22 4"/>
+                </svg>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: '#92400E' }}>{currentMonthName} attendance submitted</p>
+                  <p style={{ fontSize: 12, color: '#A16207', marginTop: 2 }}>No further attendance can be marked for {currentMonthName}</p>
+                </div>
+              </div>
+            )
           ) : (
+            // Mark attendance enabled
             <button onClick={onMarkAtt}
               style={{ width: '100%', padding: 14, background: '#1A56DB', color: 'white', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round">
@@ -289,59 +333,39 @@ function StudentDetail({ tuition: t, activeMonth, setActiveMonth, onMarkAtt, con
             </button>
           )
         ) : (
+          // Inactive tuition
           <div style={{ background: '#FEF2F2', borderRadius: 12, padding: '14px 16px', border: '1.5px solid #FECACA', textAlign: 'center' }}>
             <p style={{ fontSize: 14, fontWeight: 700, color: '#B91C1C', marginBottom: 5 }}>🚫 Class Stopped / Over</p>
             <p style={{ fontSize: 13, color: '#DC2626', lineHeight: 1.6 }}>Attendance cannot be marked.<br />Please contact your coordinator.</p>
           </div>
         )}
 
-        {/* Month completion section */}
+        {/* ── Submit Attendance section ── */}
         <div style={{ marginTop: 10 }}>
-          {completed ? (
-            <div style={{ background: '#DCFCE7', border: '1.5px solid #BBF7D0', borderRadius: 11, padding: '12px 15px', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M20 6L9 17l-5-5"/>
-              </svg>
-              <div>
-                <p style={{ fontSize: 13, fontWeight: 600, color: '#15803D' }}>Attendance Submitted — {monthLabel}</p>
-                <p style={{ fontSize: 11, color: '#166534', marginTop: 1 }}>
-                  Submitted on {new Date(completed.completedAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: '2-digit' })} · Attendance cannot be edited
-                </p>
-              </div>
-            </div>
-          ) : canComplete ? (
+          {pendingMonth ? (
             <>
+              {/* Submit button */}
               <button
-                onClick={() => setConfirmMonthKey(confirmMonthKey === checkMonthKey ? null : checkMonthKey)}
+                onClick={() => setConfirmMonthKey(confirmMonthKey === pendingMonth ? null : pendingMonth)}
                 style={{ width: '100%', padding: 13, background: '#0369A1', color: 'white', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round">
                   <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
                 </svg>
-                Submit Attendance — {monthLabel}
+                Submit Attendance — {pendingMonthLabel}
               </button>
               {/* Confirm panel */}
-              {confirmMonthKey === checkMonthKey && (
+              {confirmMonthKey === pendingMonth && (
                 <ConfirmPanel
                   tuition={t}
-                  monthKey={checkMonthKey}
-                  monthLabel={monthLabel}
+                  monthKey={pendingMonth}
+                  monthLabel={pendingMonthLabel}
                   allAtt={allAtt}
                   onCancel={() => setConfirmMonthKey(null)}
-                  onConfirm={() => onConfirmSubmit(t.id, t.enqId, checkMonthKey)}
+                  onConfirm={() => onConfirmSubmit(t.id, t.enqId, pendingMonth)}
                 />
               )}
             </>
-          ) : (
-            <div style={{ background: '#F0F9FF', border: '1.5px solid #BAE6FD', borderRadius: 11, padding: '11px 14px', display: 'flex', alignItems: 'center', gap: 9 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0284C7" strokeWidth="2" strokeLinecap="round">
-                <circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>
-              </svg>
-              <p style={{ fontSize: 12, color: '#0369A1', lineHeight: 1.5 }}>
-                Submit Attendance for <strong>{MN_ARR[parseInt(cm) - 1]}</strong> available on{' '}
-                <strong>{String(lastDay.getDate()).padStart(2, '0')} {MN_ARR[lastDay.getMonth()]} at 8:00 PM</strong>
-              </p>
-            </div>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -350,17 +374,14 @@ function StudentDetail({ tuition: t, activeMonth, setActiveMonth, onMarkAtt, con
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 13 }}>
           <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Attendance history</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {/* Monthly earning box — only when specific month selected */}
-            {activeMonth !== 'all' && (() => {
-              const monthAtt = fil.filter(a => !a.isDemo)
-              const earning  = calcTutorAmount(t, activeMonth, monthAtt)
-              return earning !== null ? (
-                <div style={{ border: '1.5px solid #D1FAE5', borderRadius: 8, padding: '4px 10px', textAlign: 'center', background: '#F0FDF4' }}>
-                  <p style={{ fontSize: 10, color: '#15803D', margin: 0, fontWeight: 600 }}>Earnings</p>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: '#15803D', margin: 0 }}>₹{earning.toLocaleString('en-IN')}</p>
-                </div>
-              ) : null
-            })()}
+            {/* Monthly earning — always current month */}
+            {currentMonthEarning !== null && currentMonthEarning > 0 && (
+              <div style={{ border: '1.5px solid #D1FAE5', borderRadius: 8, padding: '4px 10px', background: '#F0FDF4' }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#15803D', margin: 0 }}>
+                  {currentMonthName} earnings — ₹{currentMonthEarning.toLocaleString('en-IN')}
+                </p>
+              </div>
+            )}
             <span style={{
               fontSize: 13, padding: '4px 11px', borderRadius: 9, fontWeight: 600,
               background: activeMonth === 'all' ? '#F1F5F9' : '#1A56DB',
@@ -371,7 +392,7 @@ function StudentDetail({ tuition: t, activeMonth, setActiveMonth, onMarkAtt, con
           </div>
         </div>
 
-        {/* Month pills */}
+        {/* Month pills — full month name + full year */}
         <div style={{ display: 'flex', gap: 7, overflowX: 'auto', paddingBottom: 12, WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
           {months.map(([k, l]) => (
             <button key={k} className={`mpill${activeMonth === k ? ' sel' : ''}`} onClick={() => setActiveMonth(k)}>
@@ -423,7 +444,6 @@ function ConfirmPanel({ tuition, monthKey, monthLabel, allAtt, onCancel, onConfi
   const classes    = monthAtt.length
   const totalHours = monthAtt.reduce((s, a) => s + parseFloat(a.dur || 0), 0)
   const hoursDisplay = totalHours % 1 === 0 ? totalHours : totalHours.toFixed(1)
-  const MN = MN_ARR
 
   return (
     <div style={{ background: '#EFF6FF', border: '1.5px solid #BFDBFE', borderRadius: 12, padding: '12px 14px', marginTop: 8 }}>

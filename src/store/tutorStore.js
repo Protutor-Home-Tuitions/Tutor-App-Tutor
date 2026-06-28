@@ -209,7 +209,6 @@ export function getRandomMotive() {
 
 // ─────────────────────────────────────────────────────────────
 // FEE CALCULATION — exact copy from admin helpers.js
-// Used to show per-class earning and monthly total to tutor
 // ─────────────────────────────────────────────────────────────
 
 export function countScheduledDaysInMonth(year, month, scheduledDays) {
@@ -285,27 +284,4 @@ export function calcTutorAmount(tuition, monthKey, nonDemoAtt) {
   if (effHourly === null) return null
 
   return Math.round(effHourly * actualHours)
-}
-
-export function calcPerClassEarning(tuition, attRecord) {
-  if (!tuition || !attRecord) return null
-
-  const feeType = tuition.tutorFeeType || tuition.feeType
-  const fee     = parseFloat(tuition.feeTutor || 0)
-  if (!fee || !feeType) return null
-
-  const dur = parseFloat(attRecord.dur || 0)
-  if (!dur) return null
-
-  const parentType  = tuition.parentFeeType || tuition.feeType
-  const bothMonthly = parentType === 'Monthly' && feeType === 'Monthly'
-  const forceFixed  = feeType === 'Monthly' && !bothMonthly
-
-  // For per-class we don't have a specific monthKey from the record
-  // Use the attRecord's monthKey if available
-  const monthKey = attRecord.monthKey || null
-  const effHourly = calcEffHourly(fee, feeType, tuition, monthKey, forceFixed)
-  if (effHourly === null) return null
-
-  return Math.round(effHourly * dur)
 }
