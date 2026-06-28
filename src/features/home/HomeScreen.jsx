@@ -266,20 +266,19 @@ function StudentDetail({ tuition: t, activeMonth, setActiveMonth, onMarkAtt, con
           {statusBadge}
         </div>
 
-        {/* Row 1: Demo · Start · Fee */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 6 }}>
+        {/* Row 1: Demo date · Start date · Fee */}
+        <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 0.8fr 1.4fr', gap: 6, marginBottom: 6 }}>
           <div style={{ background: '#EBF1FF', borderRadius: 8, padding: '7px 10px' }}>
-            <p style={{ fontSize: 10, color: '#64748B', marginBottom: 2 }}>Demo</p>
+            <p style={{ fontSize: 10, color: '#64748B', marginBottom: 2 }}>Demo date</p>
             <p style={{ fontSize: 13, fontWeight: 600, color: '#1A56DB' }}>{fdShort(t.demo)}</p>
           </div>
           <div style={{ background: '#FFFBEB', borderRadius: 8, padding: '7px 10px' }}>
-            <p style={{ fontSize: 10, color: '#64748B', marginBottom: 2 }}>Start</p>
+            <p style={{ fontSize: 10, color: '#64748B', marginBottom: 2 }}>Start date</p>
             <p style={{ fontSize: 13, fontWeight: 600, color: '#D97706' }}>{fdShort(t.start)}</p>
           </div>
           <div style={{ background: '#FDF4FF', borderRadius: 8, padding: '7px 10px' }}>
             <p style={{ fontSize: 10, color: '#64748B', marginBottom: 2 }}>Fee</p>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#9333EA' }}>₹{t.feeTutor}</p>
-            <p style={{ fontSize: 10, color: '#7C3AED', marginTop: 1 }}>{t.tutorFeeType || t.feeType}</p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#9333EA' }}>₹{Number(t.feeTutor).toLocaleString('en-IN')}/{(t.tutorFeeType || t.feeType || '').replace('ly', '')}</p>
           </div>
         </div>
 
