@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useTutorStore, fd, dateOpts, currentMonthKey } from '../../store/tutorStore'
+import { useTutorStore, fd, dateOpts } from '../../store/tutorStore'
 
 const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
@@ -21,6 +21,29 @@ export default function AttModal({ tuition: t, onClose, onSuccess }) {
 
   const opts  = dateOpts()
   const allAtt = getAttFor(t.enqId)
+
+  // ── Determine which dates are blocked ──
+  // A date is blocked if its previous month has unsubmitted attendance
+  // e.g. On July 1, if June is pending → July dates blocked, June dates allowed
+  const optsWithBlock = opts.map((o) => {
+    const dateMk    = o.iso.slice(0, 7)
+    const [dY, dM]  = dateMk.split('-').map(Number)
+    const prevMonth = dM === 1 ? `${dY - 1}-12` : `${dY}-${String(dM - 1).padStart(2, '0')}`
+    const prevMonthAtt  = allAtt.filter((a) => a.date.startsWith(prevMonth))
+    const prevSubmitted = getCompletion(t.enqId, prevMonth)
+    const isBlockedByPending = prevMonthAtt.length > 0 && !prevSubmitted
+    const isMonthSubmitted   = !!getCompletion(t.enqId, dateMk)
+    return { ...o, blocked: isBlockedByPending || isMonthSubmitted, isMonthSubmitted, prevMonth }
+  })
+
+  // Default to latest allowed date on mount
+  useEffect(() => {
+    const firstAllowed = optsWithBlock.find((o) => !o.blocked)
+    if (firstAllowed && optsWithBlock.find((o) => o.iso === selDate)?.blocked) {
+      setSelDate(firstAllowed.iso)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Prevent body scroll when modal open
   useEffect(() => {
@@ -134,9 +157,13 @@ export default function AttModal({ tuition: t, onClose, onSuccess }) {
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Class date <span style={{ color: 'var(--danger)' }}>*</span></span>
             </div>
             <div className="date-pills">
-              {opts.map((o) => (
-                <button key={o.iso} className={`dpill${selDate === o.iso ? ' sel' : ''}`}
-                  onClick={() => setSelDate(o.iso)}>
+              {optsWithBlock.map((o) => (
+                <button key={o.iso}
+                  className={`dpill${selDate === o.iso ? ' sel' : ''}`}
+                  onClick={() => !o.blocked && setSelDate(o.iso)}
+                  disabled={o.blocked}
+                  style={o.blocked ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+                  title={o.blocked ? (o.isMonthSubmitted ? 'Month already submitted' : `Submit ${MN[parseInt(o.prevMonth.split('-')[1]) - 1]} first`) : undefined}>
                   <span>{o.label}</span>
                   <span className="dsub">{o.day} · {o.display}</span>
                 </button>

@@ -217,11 +217,11 @@ function StudentDetail({ tuition: t, activeMonth, setActiveMonth, onMarkAtt, con
   // Current month submitted?
   const currentMonthSubmitted = getCompletion(t.enqId, nowKey)
 
-  // Block marking if:
-  // 1. Pending month exists AND current month is AFTER it (must submit old first)
-  // 2. Current month is already submitted (can't add to submitted month)
+  // Block marking ONLY when current month is already submitted
+  // Pending month does NOT block button — tutor can still mark dates in the pending month
+  // AttModal handles per-date validation (blocks future month dates if pending exists)
   const isBlockedForFutureMonth = pendingMonth && nowKey > pendingMonth
-  const markBlocked = isBlockedForFutureMonth || !!currentMonthSubmitted
+  const markBlocked = !!currentMonthSubmitted
 
   // ── Current month earnings ──
   const currentMonthAtt = allAtt.filter(a => !a.isDemo && a.date.startsWith(nowKey))
@@ -351,7 +351,7 @@ function StudentDetail({ tuition: t, activeMonth, setActiveMonth, onMarkAtt, con
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.2" strokeLinecap="round">
                   <circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>
                 </svg>
-                <p style={{ fontSize: 12, color: '#92400E', margin: 0 }}>Submit {pendingMonthLabel} attendance first to mark new classes</p>
+                <p style={{ fontSize: 12, color: '#92400E', margin: 0 }}>Submit {pendingMonthLabel} to mark {currentMonthName} classes. You can still mark {pendingMonthLabel} dates.</p>
               </div>
             )}
             {!!currentMonthSubmitted && !isBlockedForFutureMonth && (
