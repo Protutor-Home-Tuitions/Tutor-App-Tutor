@@ -3,6 +3,7 @@ import { useTutorStore } from './store/tutorStore'
 import LoginScreen from './features/auth/LoginScreen'
 import HomeScreen from './features/home/HomeScreen'
 import OkScreen from './features/attendance/OkScreen'
+import PaymentsScreen from './features/payments/PaymentsScreen'
 
 const SPLASH_LINES = [
   'Empowering tutors, shaping futures',
@@ -11,7 +12,7 @@ const SPLASH_LINES = [
 ]
 
 export default function App() {
-  const [screen, setScreen] = useState('loading') // loading | login | home | ok
+  const [screen, setScreen] = useState('loading') // loading | login | home | ok | payments
   const [okData, setOkData] = useState(null)
   const [splashLine] = useState(() => SPLASH_LINES[Math.floor(Math.random() * SPLASH_LINES.length)])
   const restoreSession = useTutorStore((s) => s.restoreSession)
@@ -24,9 +25,10 @@ export default function App() {
       .catch(() => { setScreen('login') })
   }, [])
 
-  function goHome() { setScreen('home') }
-  function goOk(data) { setOkData(data); setScreen('ok') }
-  function goLogin() { setScreen('login') }
+  function goHome()     { setScreen('home') }
+  function goOk(data)   { setOkData(data); setScreen('ok') }
+  function goLogin()    { setScreen('login') }
+  function goPayments() { setScreen('payments') }
 
   if (screen === 'loading') return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#1A56DB' }}>
@@ -51,7 +53,8 @@ export default function App() {
     </div>
   )
 
-  if (screen === 'login') return <LoginScreen onSuccess={goHome} />
-  if (screen === 'ok')    return <OkScreen data={okData} onBack={goHome} />
-  return <HomeScreen onLogout={goLogin} onAttSuccess={goOk} />
+  if (screen === 'login')    return <LoginScreen onSuccess={goHome} />
+  if (screen === 'ok')       return <OkScreen data={okData} onBack={goHome} />
+  if (screen === 'payments') return <PaymentsScreen onBack={goHome} />
+  return <HomeScreen onLogout={goLogin} onAttSuccess={goOk} onPayments={goPayments} />
 }

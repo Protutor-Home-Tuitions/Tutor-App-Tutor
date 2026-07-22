@@ -26,6 +26,17 @@ function clearSession() {
   localStorage.removeItem(SESSION_KEY)
 }
 
+// Update cached `me` in localStorage without resetting expiry
+function updateSessionMe(me) {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY)
+    if (!raw) return
+    const session = JSON.parse(raw)
+    session.me = me
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session))
+  } catch {}
+}
+
 export const useTutorStore = create((set, get) => ({
   // ── Auth ──
   me: null,
@@ -35,6 +46,7 @@ export const useTutorStore = create((set, get) => ({
   tuitions: [],
   attendance: {},   // { [enqId]: [...records] }
   completions: {},  // { "enqId_monthKey": { ... } }
+  payments: [],     // array of Payment (with billing included)
 
   loading: false,
   error: null,
@@ -79,7 +91,16 @@ export const useTutorStore = create((set, get) => ({
   bootstrap: async () => {
     set({ loading: true })
     try {
-      const tuitions = await api.getMyTuitions()
+      // Fetch tuitions and fresh profile in parallel. Profile is soft-failed
+      // so a stale cached `me` is preferable to breaking bootstrap on this call.
+      const [tuitions, freshMe] = await Promise.all([
+        api.getMyTuitions(),
+        api.getMyProfile().catch(() => null),
+      ])
+      if (freshMe) {
+        set({ me: freshMe })
+        updateSessionMe(freshMe)
+      }
       set({ tuitions, loading: false })
       // Always load fresh attendance from DB (not cache)
       await Promise.all(tuitions.map((t) => get().loadTuitionData(t.enqId)))
@@ -142,15 +163,36 @@ export const useTutorStore = create((set, get) => ({
     await Promise.all(tuitions.map((t) => get().loadTuitionData(t.enqId)))
   },
 
+  // ── Submit bank details (one-time, locked after) ──
+  submitBankDetails: async (data) => {
+    const updatedTutor = await api.submitBankDetails(data)
+    set({ me: updatedTutor })
+    updateSessionMe(updatedTutor)
+    return updatedTutor
+  },
+
+  // ── Load tutor payouts (called on PaymentsScreen mount) ──
+  loadMyPayments: async () => {
+    try {
+      const rows = await api.getMyPayments()
+      set({ payments: rows })
+      return rows
+    } catch (err) {
+      set({ error: err.message })
+      throw err
+    }
+  },
+
   // ── Logout ──
   logout: () => {
     clearSession()
-    set({ me: null, token: null, tuitions: [], attendance: {}, completions: {} })
+    set({ me: null, token: null, tuitions: [], attendance: {}, completions: {}, payments: [] })
   },
 
   // ── Helpers ──
   getAttFor: (enqId) => get().attendance[enqId] || [],
   getCompletion: (enqId, monthKey) => get().completions[`${enqId}_${monthKey}`] || null,
+  isBankSubmitted: () => !!get().me?.bankSubmittedAt,
 }))
 
 // ── Date helpers ──

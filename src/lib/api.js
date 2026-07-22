@@ -50,4 +50,11 @@ export const api = {
   // Submit month completion
   submitMonthCompletion: (enqId, monthKey) =>
     request('POST', '/attendance/complete', { enqId, monthKey }),
+
+  // ── Tutor profile + bank details ──
+  getMyProfile:      () => request('GET', '/tutors/me'),
+  submitBankDetails: (data) => request('POST', '/tutors/bank-details', data),
+
+  // ── Tutor payouts ──
+  getMyPayments:     () => request('GET', '/payments/tutor/my'),
 }

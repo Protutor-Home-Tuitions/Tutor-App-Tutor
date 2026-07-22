@@ -10,7 +10,7 @@ function fdShort(iso) {
   return `${parseInt(d)} ${MN_ARR[parseInt(m) - 1]}`
 }
 
-export default function HomeScreen({ onLogout, onAttSuccess }) {
+export default function HomeScreen({ onLogout, onAttSuccess, onPayments }) {
   const [selId,      setSelId]      = useState(null)
   const [activeMonth, setActiveMonth] = useState('all')
   const [attOpen,    setAttOpen]    = useState(false)
@@ -84,6 +84,13 @@ export default function HomeScreen({ onLogout, onAttSuccess }) {
           <span className="brand-name">ProTutor</span>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onPayments}
+            style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 22, padding: '7px 16px', fontSize: 13, color: 'white', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+              <rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/>
+            </svg>
+            Payments
+          </button>
           <button onClick={handleLogout}
             style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 22, padding: '7px 16px', fontSize: 13, color: 'white', cursor: 'pointer', fontFamily: 'inherit' }}>
             Sign out
@@ -96,16 +103,36 @@ export default function HomeScreen({ onLogout, onAttSuccess }) {
         <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.62)' }}>{greet}</p>
         <p style={{ fontSize: 22, fontWeight: 600, color: 'white', marginTop: 2, marginBottom: 12 }}>{me?.name}</p>
 
-        {/* Motive banner */}
+        {/* Bank pending banner (when bank not submitted) OR motive quote */}
         <div style={{ marginBottom: 13 }}>
-          <div style={{ background: 'rgba(255,255,255,0.13)', borderRadius: 12, padding: '11px 13px', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 28, height: 28, background: 'var(--yellow)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#78350F" strokeWidth="2.3" strokeLinecap="round">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          {!me?.bankSubmittedAt ? (
+            <div onClick={onPayments}
+              style={{ background: '#FAEEDA', border: '1px solid #EF9F27', borderRadius: 12, padding: '11px 13px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+              <div style={{ width: 28, height: 28, background: '#F59E0B', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#78350F" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#633806', margin: 0 }}>Bank details pending</p>
+                <p style={{ fontSize: 11, color: '#854F0B', margin: '2px 0 0' }}>Tap to add — required for payouts</p>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#854F0B" strokeWidth="2.5" strokeLinecap="round">
+                <polyline points="9 18 15 12 9 6"/>
               </svg>
             </div>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.9)', lineHeight: 1.5, fontStyle: 'italic' }}>{motive}</p>
-          </div>
+          ) : (
+            <div style={{ background: 'rgba(255,255,255,0.13)', borderRadius: 12, padding: '11px 13px', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 28, height: 28, background: 'var(--yellow)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#78350F" strokeWidth="2.3" strokeLinecap="round">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+              </div>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.9)', lineHeight: 1.5, fontStyle: 'italic' }}>{motive}</p>
+            </div>
+          )}
         </div>
 
         {/* Student tabs */}
